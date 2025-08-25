@@ -14,10 +14,7 @@ const allowedOrigins = [
     'http://localhost:3001', 
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
-    // Add your Vercel domain here
     'https://riffai-solar-platform.vercel.app',
-    // Allow all Vercel preview deployments
-    /https:\/\/.*\.vercel\.app$/
 ];
 
 app.use(cors({
