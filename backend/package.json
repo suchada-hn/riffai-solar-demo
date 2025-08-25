@@ -1,0 +1,33 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Backend for pool detection application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:prod": "node server.prod.js",
+    "dev": "node server.js",
+    "build": "echo 'No build step required for Node.js'",
+    "test": "echo 'No tests specified'"
+  },
+  "dependencies": {
+    "cors": "2.8.5",
+    "dotenv": "16.4.7",
+    "express": "^4.21.2",
+    "multer": "1.4.5-lts.1",
+    "pg": "8.13.1",
+    "sqlite3": "^5.1.7"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "detection",
+    "gis",
+    "machine-learning",
+    "satellite-imagery"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
