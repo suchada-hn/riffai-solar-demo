@@ -1,0 +1,28 @@
+# Render-compatible Python dependencies
+# These versions are tested to work on Render's environment
+
+# Core ML libraries
+torch>=1.13.1,<2.0.0
+torchvision>=0.14.1,<0.15.0
+ultralytics>=8.0.43,<9.0.0
+
+# Image processing
+opencv-python>=4.8.0,<5.0.0
+Pillow>=10.0.0,<11.0.0
+
+# Data processing
+numpy>=1.24.0,<2.0.0
+pandas>=2.0.0,<3.0.0
+scipy>=1.11.0,<2.0.0
+
+# Utilities
+matplotlib>=3.7.0,<4.0.0
+PyYAML>=6.0,<7.0
+requests>=2.31.0,<3.0.0
+tqdm>=4.66.0,<5.0.0
+
+# Alternative lightweight versions for Render
+# Uncomment these if the above versions cause issues
+# torch>=1.12.0,<1.13.0
+# torchvision>=0.13.0,<0.14.0
+# ultralytics>=8.0.0,<8.1.0 
