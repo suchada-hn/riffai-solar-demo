@@ -14,9 +14,7 @@ import json
 from pathlib import Path
 
 def load_onnx_model(model_path):
-    """
-    Load ONNX model using ONNX Runtime (no PyTorch dependency)
-    """
+    """Load ONNX model using ONNX Runtime (no PyTorch dependency)"""
     try:
         import onnxruntime as ort
         
@@ -43,9 +41,7 @@ def load_onnx_model(model_path):
         return None
 
 def preprocess_image(image_path, target_size=(640, 640)):
-    """
-    Preprocess image for ONNX model input
-    """
+    """Preprocess image for ONNX model input"""
     # Read image
     img = cv2.imread(image_path)
     if img is None:
@@ -65,9 +61,7 @@ def preprocess_image(image_path, target_size=(640, 640)):
     return img_nchw, img_resized
 
 def run_onnx_detection(session, input_data, confidence_threshold=0.5):
-    """
-    Run detection using ONNX model
-    """
+    """Run detection using ONNX model"""
     try:
         # Get input name
         input_name = session.get_inputs()[0].name
@@ -97,36 +91,8 @@ def run_onnx_detection(session, input_data, confidence_threshold=0.5):
         print(f"❌ Error during ONNX inference: {e}")
         return []
 
-def draw_detections(image, detections, class_names):
-    """
-    Draw detection boxes on image
-    """
-    img_with_boxes = image.copy()
-    
-    for detection in detections:
-        bbox = detection['bbox']
-        confidence = detection['confidence']
-        class_id = detection['class_id']
-        
-        # Convert normalized coordinates to pixel coordinates
-        x1, y1, x2, y2 = bbox
-        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-        
-        # Draw bounding box
-        cv2.rectangle(img_with_boxes, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        
-        # Add label
-        class_name = class_names.get(class_id, f"Class {class_id}")
-        label = f"{class_name}: {confidence:.2f}"
-        cv2.putText(img_with_boxes, label, (x1, y1-10), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-    
-    return img_with_boxes
-
 def run_detection(image_path, latitude=None, longitude=None, output_dir="annotated_images"):
-    """
-    Run solar panel and pool detection using ONNX models only
-    """
+    """Run solar panel and pool detection using ONNX models only"""
     start_time = time.time()
     
     # Check if image exists
@@ -167,33 +133,12 @@ def run_detection(image_path, latitude=None, longitude=None, output_dir="annotat
         print(f"🔍 Running pool detection...")
         pool_detections = run_onnx_detection(pool_session, input_data)
         
-        # Class names for visualization
-        solar_class_names = {0: "solar-panel"}
-        pool_class_names = {0: "pool"}
-        
-        # Draw detections
-        print(f"\n🎨 Drawing detection results...")
-        
-        # Solar panel detections
-        img_solar = draw_detections(img_resized, solar_detections, solar_class_names)
-        solar_output_path = os.path.join(output_dir, "solar_panels", "detection_result.jpg")
-        os.makedirs(os.path.dirname(solar_output_path), exist_ok=True)
-        cv2.imwrite(solar_output_path, img_solar)
-        
-        # Pool detections
-        img_pool = draw_detections(img_resized, pool_detections, pool_class_names)
-        pool_output_path = os.path.join(output_dir, "pools", "detection_result.jpg")
-        os.makedirs(os.path.dirname(pool_output_path), exist_ok=True)
-        cv2.imwrite(pool_output_path, img_pool)
-        
         total_time = time.time() - start_time
         
         print(f"\n🎯 Detection Results:")
         print(f"   Solar Panels detected: {len(solar_detections)}")
         print(f"   Pools detected: {len(pool_detections)}")
         print(f"   Total processing time: {total_time:.2f} seconds")
-        print(f"   Model loading time: {model_loading_time:.2f} seconds")
-        print(f"   Detection time: {total_time - model_loading_time:.2f} seconds")
         
         # Create JSON result for the server
         result = {
@@ -205,14 +150,9 @@ def run_detection(image_path, latitude=None, longitude=None, output_dir="annotat
             },
             "processing_time": total_time,
             "model_loading_time": model_loading_time,
-            "detection_time": total_time - model_loading_time,
             "coordinates": {
                 "latitude": latitude,
                 "longitude": longitude
-            },
-            "output_files": {
-                "solar_panels": solar_output_path,
-                "pools": pool_output_path
             }
         }
         
