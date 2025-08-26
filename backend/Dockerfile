@@ -37,8 +37,17 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Expose the port the app runs on
-EXPOSE 5000
+
+# Create necessary directories
+RUN mkdir -p uploads annotated_images models
+
+# Set environment variables for Cloud Run
+ENV NODE_ENV=production
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+
+# Expose port (Cloud Run uses $PORT)
+EXPOSE 8080
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["npm", "run", "start:prod"]

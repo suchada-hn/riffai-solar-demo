@@ -82,14 +82,15 @@ const sqlite3 = require('sqlite3').verbose();
 let pool;
 let db;
 let databaseStatus = 'disconnected';
+const DATABASE_URL = "postgresql://postgres.ewcpjdsepzegbkzndlyn:bringspacedown2earth@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 
 // Use environment variables for database configuration
 const initializeDatabase = async () => {
     try {
-        if (process.env.DATABASE_URL) {
+        if (DATABASE_URL) {
             // Use DATABASE_URL (common for services like Railway, Render, etc.)
             pool = new Pool({
-                connectionString: process.env.DATABASE_URL,
+                connectionString: DATABASE_URL,
                 ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
             });
             console.log('Using PostgreSQL with DATABASE_URL');
