@@ -1,0 +1,40 @@
+name: riffai-solar-detection
+services:
+  - name: backend
+    source_dir: /
+    github:
+      repo: your-username/your-repo
+      branch: main
+    run_command: npm run start:prod
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 10000
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 60
+      interval_seconds: 30
+      timeout_seconds: 10
+      unhealthy_threshold: 3
+      healthy_threshold: 2
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: DISABLE_ML_DETECTION
+        value: false
+      - key: PORT
+        value: 10000
+    build_command: |
+      # Install Python dependencies
+      python3 -m pip install -r requirements-minimal.txt
+      # Install Node.js dependencies
+      npm install
+      # Create necessary directories
+      mkdir -p uploads annotated_images models
+      # Copy model files
+      if [ -f "best-solar-panel.pt" ]; then
+        cp best-solar-panel.pt models/
+      fi
+      if [ -f "pool-best.pt" ]; then
+        cp pool-best.pt models/
+      fi 

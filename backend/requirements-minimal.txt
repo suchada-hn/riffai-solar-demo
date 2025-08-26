@@ -1,0 +1,19 @@
+# Minimal requirements for Render deployment
+# These are the absolute minimum packages needed
+
+# Core ML (lighter versions)
+torch>=1.12.0,<1.13.0
+torchvision>=0.13.0,<0.14.0
+ultralytics>=8.0.0,<8.1.0
+
+# Essential image processing
+opencv-python-headless>=4.8.0,<5.0.0
+Pillow>=9.0.0,<10.0.0
+
+# Data processing
+numpy>=1.21.0,<2.0.0
+
+# Alternative: if the above still fails, try these even lighter versions
+# torch>=1.11.0,<1.12.0
+# torchvision>=0.12.0,<0.13.0
+# ultralytics>=8.0.0,<8.0.1 

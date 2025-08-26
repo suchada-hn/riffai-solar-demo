@@ -8,13 +8,66 @@ require('dotenv').config({ path: '.env.local' });
 
 const app = express();
 
+// Handle CORS preflight requests
+app.options('*', cors());
+
 // Configure CORS to allow requests from frontend
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001'],
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        const allowedOrigins = [
+            'http://localhost:3000', 
+            'http://localhost:3001', 
+            'http://127.0.0.1:3000', 
+            'http://127.0.0.1:3001', 
+            'https://riffai-solar-platform.vercel.app',
+            // Allow all Vercel preview deployments
+            /https:\/\/.*\.vercel\.app$/
+        ];
+        
+        // Check if origin is in allowed list
+        if (allowedOrigins.some(allowed => {
+            if (typeof allowed === 'string') {
+                return allowed === origin;
+            }
+            if (allowed instanceof RegExp) {
+                return allowed.test(origin);
+            }
+            return false;
+        })) {
+            return callback(null, true);
+        }
+        
+        console.log('CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Test endpoint for CORS debugging
+app.get('/test-cors', (req, res) => {
+    console.log('CORS test endpoint hit');
+    console.log('Origin:', req.headers.origin);
+    console.log('User-Agent:', req.headers['user-agent']);
+    res.json({ 
+        message: 'CORS test successful',
+        origin: req.headers.origin,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    });
+});
 
 // Servir arquivos estáticos dos diretórios de imagens
 app.use('/annotated_images', express.static('annotated_images'));

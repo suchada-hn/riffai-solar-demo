@@ -55,6 +55,43 @@ except Exception as e:
         pool_model = None
         solar_panel_model = None
 
+# Check if required modules are available
+def check_dependencies():
+    missing_modules = []
+    
+    try:
+        import torch
+    except ImportError:
+        missing_modules.append("torch")
+    
+    try:
+        import ultralytics
+    except ImportError:
+        missing_modules.append("ultralytics")
+    
+    try:
+        import cv2
+    except ImportError:
+        missing_modules.append("opencv-python")
+    
+    try:
+        import numpy
+    except ImportError:
+        missing_modules.append("numpy")
+    
+    if missing_modules:
+        print(f"Missing required modules: {', '.join(missing_modules)}", file=sys.stderr)
+        print("Please install missing dependencies:", file=sys.stderr)
+        print(f"pip install {' '.join(missing_modules)}", file=sys.stderr)
+        return False
+    
+    return True
+
+# Check dependencies at startup
+if not check_dependencies():
+    print("Critical dependencies missing. Exiting.", file=sys.stderr)
+    sys.exit(1)
+
 def draw_detections(image_path, detections, output_path):
     # read image
     image = cv2.imread(image_path)
