@@ -10,6 +10,7 @@ import argparse
 import time
 import cv2
 import numpy as np
+import json
 from pathlib import Path
 
 def load_onnx_model(model_path):
@@ -122,7 +123,7 @@ def draw_detections(image, detections, class_names):
     
     return img_with_boxes
 
-def run_detection(image_path, output_dir="annotated_images"):
+def run_detection(image_path, latitude=None, longitude=None, output_dir="annotated_images"):
     """
     Run solar panel and pool detection using ONNX models only
     """
@@ -194,32 +195,51 @@ def run_detection(image_path, output_dir="annotated_images"):
         print(f"   Model loading time: {model_loading_time:.2f} seconds")
         print(f"   Detection time: {total_time - model_loading_time:.2f} seconds")
         
-        # Save results to file
-        results_file = os.path.join(output_dir, "detection_results.txt")
-        with open(results_file, 'w') as f:
-            f.write(f"ONNX Detection Results for: {image_path}\n")
-            f.write(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Solar Panels detected: {len(solar_detections)}\n")
-            f.write(f"Pools detected: {len(pool_detections)}\n")
-            f.write(f"Total processing time: {total_time:.2f} seconds\n")
-            f.write(f"Model loading time: {model_loading_time:.2f} seconds\n")
-            f.write(f"Detection time: {total_time - model_loading_time:.2f} seconds\n")
+        # Create JSON result for the server
+        result = {
+            "success": True,
+            "detections": {
+                "solar_panels": len(solar_detections),
+                "pools": len(pool_detections),
+                "total": len(solar_detections) + len(pool_detections)
+            },
+            "processing_time": total_time,
+            "model_loading_time": model_loading_time,
+            "detection_time": total_time - model_loading_time,
+            "coordinates": {
+                "latitude": latitude,
+                "longitude": longitude
+            },
+            "output_files": {
+                "solar_panels": solar_output_path,
+                "pools": pool_output_path
+            }
+        }
         
-        print(f"\n💾 Results saved to: {results_file}")
-        print(f"📁 Annotated images saved to:")
-        print(f"   Solar panels: {solar_output_path}")
-        print(f"   Pools: {pool_output_path}")
+        # Print JSON result for the server to capture
+        print(json.dumps(result))
         
         return True
         
     except Exception as e:
         print(f"❌ Error during detection: {e}")
+        error_result = {
+            "success": False,
+            "error": str(e),
+            "coordinates": {
+                "latitude": latitude,
+                "longitude": longitude
+            }
+        }
+        print(json.dumps(error_result))
         return False
 
 def main():
     """Main function"""
     parser = argparse.ArgumentParser(description="ONNX-Only Solar Panel and Pool Detection")
     parser.add_argument("image_path", help="Path to the input image")
+    parser.add_argument("--latitude", "-lat", type=float, help="Latitude coordinate")
+    parser.add_argument("--longitude", "-lon", type=float, help="Longitude coordinate")
     parser.add_argument("--output", "-o", default="annotated_images", 
                        help="Output directory for annotated images")
     
@@ -239,7 +259,7 @@ def main():
     if missing_models:
         print(f"❌ Missing ONNX models: {', '.join(missing_models)}")
         print("Please ensure ONNX models are in the models/ directory")
-        return
+        sys.exit(1)
     
     print(f"✅ ONNX models found and ready!")
     print(f"   - models/best-solar-panel.onnx")
@@ -247,14 +267,13 @@ def main():
     
     print(f"\n🖼️  Processing image: {args.image_path}")
     print(f"📁 Output directory: {args.output}")
+    if args.latitude and args.longitude:
+        print(f"📍 Coordinates: {args.latitude}, {args.longitude}")
     
     # Run detection
-    success = run_detection(args.image_path, args.output)
+    success = run_detection(args.image_path, args.latitude, args.longitude, args.output)
     
-    if success:
-        print(f"\n🎉 Detection completed successfully!")
-    else:
-        print(f"\n❌ Detection failed!")
+    if not success:
         sys.exit(1)
 
 if __name__ == "__main__":

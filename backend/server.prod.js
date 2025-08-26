@@ -488,8 +488,11 @@ const runMLDetection = (imagePath, latitude, longitude) => {
     return new Promise((resolve, reject) => {
         // Try ONNX-only script first, fallback to original if not available
         let scriptPath = './run-solar-panel-and-pool-detection-onnx-only.py';
+        let scriptArgs = [scriptPath, imagePath, '--latitude', latitude, '--longitude', longitude];
+        
         if (!fs.existsSync(scriptPath)) {
             scriptPath = './run-solar-panel-and-pool-detection.py';
+            scriptArgs = [scriptPath, imagePath, latitude, longitude];
             if (!fs.existsSync(scriptPath)) {
                 reject(new Error('ML detection script not found'));
                 return;
@@ -497,7 +500,7 @@ const runMLDetection = (imagePath, latitude, longitude) => {
         }
         
         const pythonPath = 'python3';
-        const pythonScript = spawn(pythonPath, [scriptPath, imagePath, latitude, longitude]);
+        const pythonScript = spawn(pythonPath, scriptArgs);
 
         let output = "";
         let errorOutput = "";
