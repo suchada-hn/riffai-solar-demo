@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: riffai-solar-detection
+    env: node
+    plan: starter
+    buildCommand: |
+      # Install Python dependencies first
+      if [ -f "requirements.txt" ]; then
+        echo "Installing Python dependencies..."
+        python3 -m pip install --user -r requirements.txt
+      fi
+      
+      # Install Node.js dependencies
+      npm install
+      
+      # Create necessary directories
+      mkdir -p uploads annotated_images models
+      
+      # Copy model files if they exist
+      if [ -f "best-solar-panel.pt" ]; then
+        cp best-solar-panel.pt models/
+      fi
+      if [ -f "pool-best.pt" ]; then
+        cp pool-best.pt models/
+      fi
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DISABLE_ML_DETECTION
+        value: false
+      # Add your database variables here
+      # - key: DATABASE_URL
+      #   value: your_postgres_connection_string
+    healthCheckPath: /health 
