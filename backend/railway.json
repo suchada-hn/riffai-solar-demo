@@ -1,8 +1,8 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile.railway.fast"
+    "builder": "NIXPACKS",
+    "buildCommand": "npm ci --only=production --no-audit --no-fund && python3 -m pip install --no-cache-dir -r requirements-onnx-only.txt"
   },
   "deploy": {
     "startCommand": "npm run start:prod",
