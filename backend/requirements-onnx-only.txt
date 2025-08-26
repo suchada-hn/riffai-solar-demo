@@ -1,0 +1,15 @@
+# ONNX-only requirements for reliable deployment
+# This excludes PyTorch to avoid compatibility issues
+
+# ONNX Runtime (no PyTorch dependency)
+onnxruntime>=1.15.0
+
+# Essential image processing
+opencv-python-headless>=4.8.0,<5.0.0
+Pillow>=9.0.0,<10.0.0
+
+# Data processing
+numpy>=1.21.0,<2.0.0
+
+# Note: This eliminates PyTorch compatibility issues
+# and provides faster, more reliable ML inference 

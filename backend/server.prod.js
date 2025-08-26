@@ -486,14 +486,18 @@ app.delete('/detections/:id', async (req, res) => {
 // ML Detection function
 const runMLDetection = (imagePath, latitude, longitude) => {
     return new Promise((resolve, reject) => {
-        // Check if Python script exists
-        if (!fs.existsSync('./run-solar-panel-and-pool-detection.py')) {
-            reject(new Error('ML detection script not found'));
-            return;
+        // Try ONNX-only script first, fallback to original if not available
+        let scriptPath = './run-solar-panel-and-pool-detection-onnx-only.py';
+        if (!fs.existsSync(scriptPath)) {
+            scriptPath = './run-solar-panel-and-pool-detection.py';
+            if (!fs.existsSync(scriptPath)) {
+                reject(new Error('ML detection script not found'));
+                return;
+            }
         }
         
         const pythonPath = 'python3';
-        const pythonScript = spawn(pythonPath, ['./run-solar-panel-and-pool-detection.py', imagePath, latitude, longitude]);
+        const pythonScript = spawn(pythonPath, [scriptPath, imagePath, latitude, longitude]);
 
         let output = "";
         let errorOutput = "";
