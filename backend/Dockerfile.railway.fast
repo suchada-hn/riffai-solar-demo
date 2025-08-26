@@ -1,0 +1,39 @@
+# Ultra-fast Railway Dockerfile for ML backend
+FROM python:3.9-slim
+
+# Install only essential dependencies in one layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy only essential files first
+COPY package*.json ./
+RUN npm ci --only=production --no-audit --no-fund --silent
+
+# Copy Python requirements and install with minimal dependencies
+COPY requirements-minimal.txt .
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir -r requirements-minimal.txt
+
+# Copy application code
+COPY . .
+
+# Create directories
+RUN mkdir -p uploads annotated_images models
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PYTHONUNBUFFERED=1
+ENV PORT=10000
+
+EXPOSE 10000
+
+CMD ["npm", "run", "start:prod"] 

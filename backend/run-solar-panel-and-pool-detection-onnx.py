@@ -8,6 +8,7 @@ import os
 import sys
 import argparse
 import time
+import torch
 from pathlib import Path
 
 def load_model(model_path):
@@ -23,8 +24,8 @@ def load_model(model_path):
     try:
         from ultralytics import YOLO
         
-        # Check if ONNX version exists
-        onnx_path = str(model_path).replace('.pt', '.onnx')
+        # Check if ONNX version exists in models directory
+        onnx_path = os.path.join("models", str(model_path).replace('.pt', '.onnx'))
         if os.path.exists(onnx_path):
             print(f"🚀 Loading ONNX model: {onnx_path}")
             model = YOLO(onnx_path)
@@ -32,9 +33,22 @@ def load_model(model_path):
             return model
         else:
             print(f"📦 Loading PyTorch model: {model_path}")
-            model = YOLO(model_path)
-            print(f"✅ PyTorch model loaded successfully!")
-            return model
+            # Use the same workaround for PyTorch models
+            try:
+                # Workaround: temporarily patch torch.load to allow weights_only=False
+                original_load = torch.load
+                
+                def patched_load(f, *args, **kwargs):
+                    kwargs['weights_only'] = False
+                    return original_load(f, *args, **kwargs)
+                
+                torch.load = patched_load
+                model = YOLO(model_path)
+                torch.load = original_load  # Restore original
+                return model
+            except Exception as e:
+                print(f"❌ Error loading PyTorch model: {e}")
+                raise
             
     except ImportError as e:
         print(f"❌ Error importing ultralytics: {e}")
@@ -170,12 +184,12 @@ def main():
     # Check for ONNX models
     onnx_models = []
     for model in required_models:
-        onnx_path = model.replace('.pt', '.onnx')
+        onnx_path = os.path.join("models", model.replace('.pt', '.onnx'))
         if os.path.exists(onnx_path):
             onnx_models.append(onnx_path)
     
     if onnx_models:
-        print(f"✅ Found ONNX models: {', '.join(onnx_models)}")
+        print(f"✅ Found ONNX models: {', '.join(onnx_path.split('/')[-1] for onnx_path in onnx_models)}")
         print("   These will load much faster than the original .pt models")
     else:
         print("⚠️  No ONNX models found. Using original .pt models (slower loading)")

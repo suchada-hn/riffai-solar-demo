@@ -1,0 +1,64 @@
+# Multi-stage build for faster builds and smaller images
+FROM python:3.9-slim as python-base
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    libgl1 \
+    libglib2.0-0 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# Upgrade pip
+RUN pip3 install --upgrade pip
+
+# Python dependencies stage
+FROM python-base as python-deps
+WORKDIR /app
+COPY requirements-minimal.txt .
+RUN pip3 install --no-cache-dir -r requirements-minimal.txt
+
+# Node.js dependencies stage
+FROM python-base as node-deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Final stage
+FROM python-base as production
+WORKDIR /app
+
+# Copy Python dependencies
+COPY --from=python-deps /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=python-deps /usr/local/bin /usr/local/bin
+
+# Copy Node.js dependencies
+COPY --from=node-deps /app/node_modules ./node_modules
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p uploads annotated_images models
+
+# Copy ONNX models (they're already optimized)
+RUN mkdir -p models
+COPY models/ models
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PYTHONUNBUFFERED=1
+
+# Expose port
+EXPOSE 10000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:10000/health || exit 1
+
+# Start the application
+CMD ["npm", "run", "start:prod"] 

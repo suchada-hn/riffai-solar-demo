@@ -1,0 +1,7 @@
+Detection Results for: test_detections.jpg
+Timestamp: 2025-08-26 16:16:42
+Solar Panels detected: 1
+Pools detected: 0
+Total processing time: 11.19 seconds
+Model loading time: 5.74 seconds
+Detection time: 5.45 seconds

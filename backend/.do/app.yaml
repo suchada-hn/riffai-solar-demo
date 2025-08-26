@@ -12,7 +12,7 @@ services:
     http_port: 10000
     health_check:
       http_path: /health
-      initial_delay_seconds: 60
+      initial_delay_seconds: 120
       interval_seconds: 30
       timeout_seconds: 10
       unhealthy_threshold: 3
@@ -25,16 +25,15 @@ services:
       - key: PORT
         value: 10000
     build_command: |
-      # Install Python dependencies
-      python3 -m pip install -r requirements-minimal.txt
+      # Install Python dependencies first
+      python3 -m pip install --no-cache-dir -r requirements-minimal.txt
       # Install Node.js dependencies
-      npm install
+      npm ci --only=production --no-audit --no-fund
       # Create necessary directories
       mkdir -p uploads annotated_images models
       # Copy model files
-      if [ -f "best-solar-panel.pt" ]; then
-        cp best-solar-panel.pt models/
-      fi
-      if [ -f "pool-best.pt" ]; then
-        cp pool-best.pt models/
+      if [ -f "models/best-solar-panel.onnx" ]; then
+        echo "ONNX models found"
+      else
+        echo "Warning: ONNX models not found"
       fi 
