@@ -125,7 +125,39 @@ app.post('/detect', upload.single('image'), async (req, res) => {
 // Get all detections endpoint
 app.get('/detections', (req, res) => {
     try {
-        res.status(200).json(detections);
+        // Transform the data structure to match what the frontend expects
+        const transformedDetections = [];
+        let globalId = 1;
+        
+        detections.forEach(detectionRecord => {
+            detectionRecord.detections.forEach(detection => {
+                // Calculate center coordinates from bbox
+                const centerLat = detection.latitude + (detection.bbox[1] - detection.bbox[3]) * 0.000001; // Approximate
+                const centerLng = detection.longitude + (detection.bbox[0] - detection.bbox[2]) * 0.000001; // Approximate
+                
+                transformedDetections.push({
+                    id: globalId++,
+                    class: detection.class,
+                    name: detection.name,
+                    bbox_xmin: detection.bbox[0],
+                    bbox_ymin: detection.bbox[1],
+                    bbox_xmax: detection.bbox[2],
+                    bbox_ymax: detection.bbox[3],
+                    latitude: detection.latitude,
+                    longitude: detection.longitude,
+                    confidence: detection.confidence,
+                    original_image_path: detectionRecord.original_image_url,
+                    annotated_image_path: detectionRecord.annotated_image_url,
+                    center_latitude: centerLat,
+                    center_longitude: centerLng,
+                    created_at: detectionRecord.timestamp.replace('T', ' ').replace('Z', ''),
+                    original_image_url: detectionRecord.original_image_url,
+                    annotated_image_url: detectionRecord.annotated_image_url
+                });
+            });
+        });
+        
+        res.status(200).json(transformedDetections);
     } catch (error) {
         console.error('Error fetching detections:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -136,13 +168,44 @@ app.get('/detections', (req, res) => {
 app.get('/detections/:id', (req, res) => {
     try {
         const { id } = req.params;
-        const detection = detections.find(d => d.id == id);
         
-        if (!detection) {
-            return res.status(404).json({ error: 'Detection not found' });
-        }
+        // Transform the data structure to match what the frontend expects
+        const transformedDetections = [];
+        let globalId = 1;
         
-        res.status(200).json(detection);
+        detections.forEach(detectionRecord => {
+            detectionRecord.detections.forEach(detection => {
+                // Calculate center coordinates from bbox
+                const centerLat = detection.latitude + (detection.bbox[1] - detection.bbox[3]) * 0.000001; // Approximate
+                const centerLng = detection.longitude + (detection.bbox[0] - detection.bbox[2]) * 0.000001; // Approximate
+                
+                const transformedDetection = {
+                    id: globalId++,
+                    class: detection.class,
+                    name: detection.name,
+                    bbox_xmin: detection.bbox[0],
+                    bbox_ymin: detection.bbox[1],
+                    bbox_xmax: detection.bbox[2],
+                    bbox_ymax: detection.bbox[3],
+                    latitude: detection.latitude,
+                    longitude: detection.longitude,
+                    confidence: detection.confidence,
+                    original_image_path: detectionRecord.original_image_url,
+                    annotated_image_path: detectionRecord.annotated_image_url,
+                    center_latitude: centerLat,
+                    center_longitude: centerLng,
+                    created_at: detectionRecord.timestamp.replace('T', ' ').replace('Z', ''),
+                    original_image_url: detectionRecord.original_image_url,
+                    annotated_image_url: detectionRecord.annotated_image_url
+                };
+                
+                if (globalId - 1 == id) {
+                    return res.status(200).json(transformedDetection);
+                }
+            });
+        });
+        
+        res.status(404).json({ error: 'Detection not found' });
     } catch (error) {
         console.error('Error fetching detection:', error);
         res.status(500).json({ error: 'Internal server error' });
