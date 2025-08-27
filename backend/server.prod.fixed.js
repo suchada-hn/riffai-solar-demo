@@ -14,7 +14,7 @@ let nextId = 1;
 
 // CORS configuration
 app.use(cors({
-    origin: process.env.FRONTEND_URL || '*' || 'http://localhost:3000' || 'https://riffai-energy.vercel.app',
+    origin: process.env.FRONTEND_URL || '*' || 'http://localhost:3000' || 'https://riffai-energy.vercel.app' || 'https://riffai-solar-platform.vercel.app',
     credentials: true
 }));
 
