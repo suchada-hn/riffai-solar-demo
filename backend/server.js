@@ -355,6 +355,11 @@ const detectionExists = async (centerLatitude, centerLongitude) => {
     }
 };
 
+// Health check endpoint for Cloud Run
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 app.post('/detect', upload.single('image'), async (req, res) => {
     const originalImagePath = req.file.path;
     const { latitude, longitude } = req.body;
