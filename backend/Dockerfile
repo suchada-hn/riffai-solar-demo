@@ -1,41 +1,39 @@
-# Use a base image with Python 3.9 or higher
+# Google Cloud Run optimized Dockerfile for ML backend
 FROM python:3.9-slim
 
-# Set the working directory
-WORKDIR /app
-
-# Update the package list and install necessary system packages
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    python3-pip \
-    python3-setuptools \
-    python3-dev \
     curl \
     libgl1 \
     libglib2.0-0 \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get install -y nodejs
+# Set working directory
+WORKDIR /app
 
-# Upgrade pip to the latest version
-RUN pip3 install --upgrade pip
-
-# Copy Python requirements first for better caching
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-# Copy package.json and package-lock.json
+# Copy package files first for better caching
 COPY package*.json ./
+RUN npm ci --only=production --no-audit --no-fund
 
-# Install Node.js dependencies
-RUN npm install
+# Copy Python requirements and install complete dependencies
+COPY requirements-cloudrun.txt .
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir -r requirements-cloudrun.txt
 
-# Copy the rest of the application code
+# Copy application code
 COPY . .
+
 # Create necessary directories
 RUN mkdir -p uploads annotated_images models
 
@@ -55,6 +53,10 @@ ENV DATABASE_PASSWORD=bringspacedown2earth
 ENV FRONTEND_URL=https://riffai-energy.vercel.app
 # Expose the port the app runs on
 EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:$PORT/health || exit 1
 
 # Start the application
 CMD ["npm", "start"]
