@@ -245,7 +245,7 @@ const runMLDetection = (imagePath, latitude, longitude) => {
                 if (testResult.status === 0) {
                     scriptPath = './run-solar-panel-and-pool-detection.py';
                     scriptArgs = [scriptPath, imagePath, latitude, longitude];
-                    console.log('✅ Using working PyTorch script');
+                    console.log('✅ Using working PyTorch script (best detection quality)');
                 } else {
                     console.log('⚠️ PyTorch script exists but ultralytics not available, falling back to ONNX');
                 }
@@ -259,7 +259,7 @@ const runMLDetection = (imagePath, latitude, longitude) => {
             if (fs.existsSync('./run-solar-panel-and-pool-detection-improved.py')) {
                 scriptPath = './run-solar-panel-and-pool-detection-improved.py';
                 scriptArgs = [scriptPath, imagePath, '--latitude', latitude, '--longitude', longitude];
-                console.log('✅ Using improved ONNX script (PyTorch not available)');
+                console.log('✅ Using improved ONNX script (PyTorch not available - reduced detection quality)');
             } else {
                 reject(new Error('No detection script found'));
                 return;

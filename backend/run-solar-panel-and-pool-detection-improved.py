@@ -75,7 +75,8 @@ def run_onnx_detection(session, input_data, confidence_threshold=0.3):
         # Filter by confidence (lower threshold for better detection)
         detections = []
         for detection in predictions[0]:
-            confidence = float(detection[4])  # Convert to Python float
+            # ONNX returns confidence as percentage (0-100), convert to decimal (0-1)
+            confidence = float(detection[4]) / 100.0  # Convert percentage to decimal
             if confidence > confidence_threshold:
                 class_id = int(detection[5])
                 bbox = [float(x) for x in detection[0:4]]  # Convert to Python list of floats
@@ -173,12 +174,12 @@ def run_detection(image_path, latitude=None, longitude=None, output_dir="annotat
         print(f"\n🖼️  Preprocessing image...")
         input_data, img_resized = preprocess_image(image_path)
         
-        # Run detections with lower confidence threshold
-        print(f"\n🔍 Running solar panel detection (confidence > 0.3)...")
-        solar_detections = run_onnx_detection(solar_session, input_data, confidence_threshold=0.3)
+        # Run detections with lower confidence threshold for better sensitivity
+        print(f"\n🔍 Running solar panel detection (confidence > 0.25)...")
+        solar_detections = run_onnx_detection(solar_session, input_data, confidence_threshold=0.25)
         
-        print(f"🔍 Running pool detection (confidence > 0.3)...")
-        pool_detections = run_onnx_detection(pool_session, input_data, confidence_threshold=0.3)
+        print(f"🔍 Running pool detection (confidence > 0.25)...")
+        pool_detections = run_onnx_detection(pool_session, input_data, confidence_threshold=0.25)
         
         # Filter duplicates
         print(f"\n🔄 Filtering duplicate detections...")
