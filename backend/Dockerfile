@@ -36,9 +36,25 @@ RUN npm install
 
 # Copy the rest of the application code
 COPY . .
+# Create necessary directories
+RUN mkdir -p uploads annotated_images models
 
+# Set environment variables for Cloud Run
+ENV NODE_ENV=production
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+
+# ENV DATABASE Configuration (used by server.js)
+ENV DATABASE_HOST=aws-0-ap-southeast-1.pooler.supabase.com
+ENV DATABASE_PORT=6543
+ENV DATABASE_NAME=postgres
+ENV DATABASE_USER=postgres.ewcpjdsepzegbkzndlyn
+ENV DATABASE_PASSWORD=bringspacedown2earth
+
+# CORS Configuration (used by server.js)
+ENV FRONTEND_URL=https://riffai-energy.vercel.app
 # Expose the port the app runs on
-EXPOSE 5000
+EXPOSE 8080
 
 # Start the application
 CMD ["npm", "start"]
