@@ -7,14 +7,44 @@ const { spawn } = require('child_process');
 require('dotenv').config({ path: '.env.local' });
 
 const app = express();
+// Production CORS configuration - allow Vercel domain
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001', 
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'https://riffai-energy.vercel.app',
+    // Add your Vercel domain here
+    'https://riffai-solar-platform.vercel.app',
+    // Allow all Vercel preview deployments
+    /https:\/\/.*\.vercel\.app$/
+];
 
-// Configure CORS to allow requests from frontend
 app.use(cors({
-    origin: ['https://riffai-energy.vercel.app','http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'https://riffai-solar-platform.vercel.app'],
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // Check if origin is in allowed list
+        if (allowedOrigins.some(allowed => {
+            if (typeof allowed === 'string') {
+                return allowed === origin;
+            }
+            if (allowed instanceof RegExp) {
+                return allowed.test(origin);
+            }
+            return false;
+        })) {
+            return callback(null, true);
+        }
+        
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 
 // Servir arquivos estáticos dos diretórios de imagens
 app.use('/annotated_images', express.static('annotated_images'));
@@ -442,9 +472,14 @@ app.post('/detect', upload.single('image'), async (req, res) => {
         });
     };
 
-    runDetectionScript('./run-solar-panel-and-pool-detection.py', (err, result) => {
+    runDetectionScript('./run-solar-panel-and-pool-detection-onnx-only.py', (err, result) => {
         if (err) {
-            return res.status(500).send(err.message);
+            console.error('Detection script error:', err);
+            return res.status(500).json({ 
+                error: 'Detection failed', 
+                details: err.message,
+                timestamp: new Date().toISOString()
+            });
         }
         if (result.skippedDetections && result.skippedDetections.includes('duplicate')) {
             return res.status(200).json({ message: 'Some detections were skipped because they were duplicates.', result });

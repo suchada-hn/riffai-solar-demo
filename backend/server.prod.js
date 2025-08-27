@@ -432,12 +432,12 @@ app.delete('/detections/:id', async (req, res) => {
 // ML Detection function
 const runMLDetection = (imagePath, latitude, longitude) => {
     return new Promise((resolve, reject) => {
-        // Use the working script first (same as server.js), then try ONNX if available
-        let scriptPath = './run-solar-panel-and-pool-detection.py';
+        // Prioritize ONNX-only script for reliability in production
+        let scriptPath = './run-solar-panel-and-pool-detection-onnx-only.py';
         let scriptArgs = [scriptPath, imagePath, latitude, longitude];
         
-        // Check if improved ONNX script exists and is working
-        if (fs.existsSync('./run-solar-panel-and-pool-detection-improved.py')) {
+        // Fallback to improved script if ONNX-only doesn't exist
+        if (!fs.existsSync(scriptPath) && fs.existsSync('./run-solar-panel-and-pool-detection-improved.py')) {
             try {
                 // Test if ONNX script works by running a quick test
                 const testResult = require('child_process').spawnSync('python3', [
@@ -450,7 +450,7 @@ const runMLDetection = (imagePath, latitude, longitude) => {
                     scriptArgs = [scriptPath, imagePath, '--latitude', latitude, '--longitude', longitude];
                     console.log('✅ Using improved ONNX script');
                 } else {
-                    console.log('⚠️  ONNX script test failed, using working PyTorch script');
+                    console.log('⚠️  ONNX script test failed, using ONNX-only script');
                 }
             } catch (error) {
                 console.log('⚠️  ONNX script test error, using working PyTorch script');

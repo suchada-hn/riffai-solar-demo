@@ -26,10 +26,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production --no-audit --no-fund
 
-# Copy Python requirements and install complete dependencies
-COPY requirements-cloudrun.txt .
+# Copy Python requirements and install ONNX-only dependencies
+COPY requirements-onnx-only.txt .
 RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir -r requirements-cloudrun.txt
+    && pip3 install --no-cache-dir -r requirements-onnx-only.txt
 
 # Copy application code
 COPY . .
