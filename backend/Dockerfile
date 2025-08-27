@@ -1,49 +1,44 @@
-# Google Cloud Run optimized Dockerfile for ML backend
+# Use a base image with Python 3.9 or higher
 FROM python:3.9-slim
 
-# Install system dependencies
+# Set the working directory
+WORKDIR /app
+
+# Update the package list and install necessary system packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    python3-pip \
+    python3-setuptools \
+    python3-dev \
     curl \
     libgl1 \
     libglib2.0-0 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get update \
-    && apt-get install -y nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
 
-# Copy package files first for better caching
+# Upgrade pip to the latest version
+RUN pip3 install --upgrade pip
+
+# Copy Python requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Copy package.json and package-lock.json
 COPY package*.json ./
-RUN npm ci --only=production --no-audit --no-fund
 
-# Copy Python requirements and install ONNX-only dependencies
-COPY requirements-onnx-only.txt .
-RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir -r requirements-onnx-only.txt
+# Install Node.js dependencies
+RUN npm install
 
-# Copy application code
+# Copy the rest of the application code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p uploads annotated_images models
-
-# Set environment variables for Cloud Run
-ENV NODE_ENV=production
-ENV PYTHONUNBUFFERED=1
-ENV PORT=8080
-
-# Expose port (Cloud Run uses $PORT)
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:$PORT/health || exit 1
+# Expose the port the app runs on
+EXPOSE 5000
 
 # Start the application
 CMD ["npm", "start"]
