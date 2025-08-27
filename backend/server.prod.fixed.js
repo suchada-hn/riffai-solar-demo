@@ -4,7 +4,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const app = express();
 
@@ -233,12 +233,29 @@ app.delete('/detections/:id', (req, res) => {
 // ML Detection function - Uses working script first
 const runMLDetection = (imagePath, latitude, longitude) => {
     return new Promise((resolve, reject) => {
-        // Use the working PyTorch script first (same as server.js)
-        let scriptPath = './run-solar-panel-and-pool-detection.py';
-        let scriptArgs = [scriptPath, imagePath, latitude, longitude];
+        // Check which scripts are available and working
+        let scriptPath = null;
+        let scriptArgs = null;
         
-        // Only try ONNX if PyTorch script fails
-        if (!fs.existsSync(scriptPath)) {
+        // First, try to check if PyTorch script exists and can import ultralytics
+        if (fs.existsSync('./run-solar-panel-and-pool-detection.py')) {
+            // Test if PyTorch dependencies are available
+            try {
+                const testResult = spawnSync('python3', ['-c', 'import ultralytics; print("PyTorch available")'], { timeout: 5000 });
+                if (testResult.status === 0) {
+                    scriptPath = './run-solar-panel-and-pool-detection.py';
+                    scriptArgs = [scriptPath, imagePath, latitude, longitude];
+                    console.log('✅ Using working PyTorch script');
+                } else {
+                    console.log('⚠️ PyTorch script exists but ultralytics not available, falling back to ONNX');
+                }
+            } catch (error) {
+                console.log('⚠️ PyTorch script exists but ultralytics not available, falling back to ONNX');
+            }
+        }
+        
+        // If PyTorch not available, use ONNX script
+        if (!scriptPath) {
             if (fs.existsSync('./run-solar-panel-and-pool-detection-improved.py')) {
                 scriptPath = './run-solar-panel-and-pool-detection-improved.py';
                 scriptArgs = [scriptPath, imagePath, '--latitude', latitude, '--longitude', longitude];
@@ -247,8 +264,6 @@ const runMLDetection = (imagePath, latitude, longitude) => {
                 reject(new Error('No detection script found'));
                 return;
             }
-        } else {
-            console.log('✅ Using working PyTorch script');
         }
         
         const pythonPath = 'python3';

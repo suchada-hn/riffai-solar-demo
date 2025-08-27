@@ -75,10 +75,10 @@ def run_onnx_detection(session, input_data, confidence_threshold=0.3):
         # Filter by confidence (lower threshold for better detection)
         detections = []
         for detection in predictions[0]:
-            confidence = detection[4]
+            confidence = float(detection[4])  # Convert to Python float
             if confidence > confidence_threshold:
                 class_id = int(detection[5])
-                bbox = detection[0:4]  # x1, y1, x2, y2
+                bbox = [float(x) for x in detection[0:4]]  # Convert to Python list of floats
                 detections.append({
                     'bbox': bbox,
                     'confidence': confidence,
@@ -192,36 +192,38 @@ def run_detection(image_path, latitude=None, longitude=None, output_dir="annotat
         print(f"   Pools detected: {len(pool_detections)}")
         print(f"   Total processing time: {total_time:.2f} seconds")
         
-        # Create detailed JSON result matching local backend format
+        # Create result matching PyTorch script format
+        all_detections = []
+        
+        # Add pool detections
+        for det in pool_detections:
+            all_detections.append({
+                "class": 1,  # Pool class
+                "name": "pool",
+                "confidence": det["confidence"],
+                "bbox": det["bbox"],
+                "latitude": latitude,
+                "longitude": longitude
+            })
+        
+        # Add solar panel detections
+        for det in solar_detections:
+            all_detections.append({
+                "class": 2,  # Solar panel class
+                "name": "solar_panel",
+                "confidence": det["confidence"],
+                "bbox": det["bbox"],
+                "latitude": latitude,
+                "longitude": longitude
+            })
+        
         result = {
-            "success": True,
-            "detections": {
-                "solar_panels": len(solar_detections),
-                "pools": len(pool_detections),
-                "total": len(solar_detections) + len(pool_detections)
-            },
-            "processing_time": total_time,
-            "model_loading_time": model_loading_time,
-            "coordinates": {
+            "detections": all_detections,
+            "location": {
                 "latitude": latitude,
                 "longitude": longitude
             },
-            "detection_details": {
-                "solar_panels": [
-                    {
-                        "confidence": det["confidence"],
-                        "bbox": det["bbox"],
-                        "class_id": det["class_id"]
-                    } for det in solar_detections
-                ],
-                "pools": [
-                    {
-                        "confidence": det["confidence"],
-                        "bbox": det["bbox"],
-                        "class_id": det["class_id"]
-                    } for det in pool_detections
-                ]
-            }
+            "detection_image": None
         }
         
         # Print JSON result for the server to capture
