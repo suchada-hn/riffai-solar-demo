@@ -432,21 +432,34 @@ app.delete('/detections/:id', async (req, res) => {
 // ML Detection function
 const runMLDetection = (imagePath, latitude, longitude) => {
     return new Promise((resolve, reject) => {
-        // Try improved ONNX script first, then regular ONNX, then fallback to original
-        let scriptPath = './run-solar-panel-and-pool-detection-improved.py';
-        let scriptArgs = [scriptPath, imagePath, '--latitude', latitude, '--longitude', longitude];
+        // Use the working script first (same as server.js), then try ONNX if available
+        let scriptPath = './run-solar-panel-and-pool-detection.py';
+        let scriptArgs = [scriptPath, imagePath, latitude, longitude];
+        
+        // Check if improved ONNX script exists and is working
+        if (fs.existsSync('./run-solar-panel-and-pool-detection-improved.py')) {
+            try {
+                // Test if ONNX script works by running a quick test
+                const testResult = require('child_process').spawnSync('python3', [
+                    './run-solar-panel-and-pool-detection-improved.py', 
+                    '--help'
+                ], { timeout: 5000 });
+                
+                if (testResult.status === 0) {
+                    scriptPath = './run-solar-panel-and-pool-detection-improved.py';
+                    scriptArgs = [scriptPath, imagePath, '--latitude', latitude, '--longitude', longitude];
+                    console.log('✅ Using improved ONNX script');
+                } else {
+                    console.log('⚠️  ONNX script test failed, using working PyTorch script');
+                }
+            } catch (error) {
+                console.log('⚠️  ONNX script test error, using working PyTorch script');
+            }
+        }
         
         if (!fs.existsSync(scriptPath)) {
-            scriptPath = './run-solar-panel-and-pool-detection-onnx-only.py';
-            scriptArgs = [scriptPath, imagePath, '--latitude', latitude, '--longitude', longitude];
-            if (!fs.existsSync(scriptPath)) {
-                scriptPath = './run-solar-panel-and-pool-detection.py';
-                scriptArgs = [scriptPath, imagePath, latitude, longitude];
-                if (!fs.existsSync(scriptPath)) {
-                    reject(new Error('ML detection script not found'));
-                    return;
-                }
-            }
+            reject(new Error('ML detection script not found'));
+            return;
         }
         
         const pythonPath = 'python3';
