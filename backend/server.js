@@ -116,25 +116,50 @@ if (process.env.DATABASE_HOST === 'localhost' || process.env.DATABASE_HOST === '
 }
 
 const createDetectionsTable = async () => {
-    const query = `
-        CREATE TABLE IF NOT EXISTS detections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            class INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            bbox_xmin REAL NOT NULL,
-            bbox_ymin REAL NOT NULL,
-            bbox_xmax REAL NOT NULL,
-            bbox_ymax REAL NOT NULL,
-            latitude REAL NOT NULL,
-            longitude REAL NOT NULL,
-            confidence REAL NOT NULL,
-            original_image_path TEXT,
-            annotated_image_path TEXT,
-            center_latitude REAL,
-            center_longitude REAL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `;
+    let query;
+    if (db) {
+        // SQLite query
+        query = `
+            CREATE TABLE IF NOT EXISTS detections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                class INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                bbox_xmin REAL NOT NULL,
+                bbox_ymin REAL NOT NULL,
+                bbox_xmax REAL NOT NULL,
+                bbox_ymax REAL NOT NULL,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                confidence REAL NOT NULL,
+                original_image_path TEXT,
+                annotated_image_path TEXT,
+                center_latitude REAL,
+                center_longitude REAL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+    } else if (pool) {
+        // PostgreSQL query
+        query = `
+            CREATE TABLE IF NOT EXISTS detections (
+                id SERIAL PRIMARY KEY,
+                class INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                bbox_xmin REAL NOT NULL,
+                bbox_ymin REAL NOT NULL,
+                bbox_xmax REAL NOT NULL,
+                bbox_ymax REAL NOT NULL,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                confidence REAL NOT NULL,
+                original_image_path TEXT,
+                annotated_image_path TEXT,
+                center_latitude REAL,
+                center_longitude REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+    }
 
     try {
         if (db) {
@@ -159,7 +184,6 @@ const createDetectionsTable = async () => {
         console.error('Error creating detections table:', error.message);
     }
 };
-initializeDatabase();
 
 const convertPixelsToCoords = (detection) => {
     const IMAGE_WIDTH = 800;
@@ -639,6 +663,20 @@ app.delete('/detections/:id', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+
+// Initialize database and start server
+const startServer = async () => {
+    try {
+        await initializeDatabase();
+        console.log('Database initialized successfully');
+        
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error('Failed to initialize database:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
