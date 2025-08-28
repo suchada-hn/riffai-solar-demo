@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 # Model paths
-POOL_MODEL_PATH = "./pool-best.pt"
+POOL_MODEL_PATH = "pool-best.pt"
 SOLAR_PANEL_MODEL_PATH = "best-solar-panel.pt"
 
 # Load models with proper PyTorch compatibility

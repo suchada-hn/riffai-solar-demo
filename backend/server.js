@@ -472,14 +472,9 @@ app.post('/detect', upload.single('image'), async (req, res) => {
         });
     };
 
-    runDetectionScript('./run-solar-panel-and-pool-detection-onnx-only.py', (err, result) => {
+    runDetectionScript('./run-solar-panel-and-pool-detection.py', (err, result) => {
         if (err) {
-            console.error('Detection script error:', err);
-            return res.status(500).json({ 
-                error: 'Detection failed', 
-                details: err.message,
-                timestamp: new Date().toISOString()
-            });
+            return res.status(500).send(err.message);
         }
         if (result.skippedDetections && result.skippedDetections.includes('duplicate')) {
             return res.status(200).json({ message: 'Some detections were skipped because they were duplicates.', result });
