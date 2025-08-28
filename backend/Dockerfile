@@ -37,9 +37,9 @@ COPY .env.production .env.local
 RUN mkdir -p uploads annotated_images models
 
 # Set environment variables for Cloud Run
-# ENV NODE_ENV=production
-# ENV PYTHONUNBUFFERED=1
-# ENV PORT=8080
+ENV NODE_ENV=production
+ENV PYTHONUNBUFFERED=1
+# Cloud Run will provide PORT environment variable
 
 # Expose port (Cloud Run uses $PORT)
 EXPOSE 8080
