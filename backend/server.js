@@ -8,43 +8,39 @@ require('dotenv').config({ path: '.env.local' });
 
 const app = express();
 // Production CORS configuration - allow Vercel domain
-const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3001', 
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'https://riffai-energy.vercel.app',
-    // Add your Vercel domain here
-    'https://riffai-solar-platform.vercel.app',
-    // Allow all Vercel preview deployments
-    /https:\/\/.*\.vercel\.app$/
-];
-
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        
-        // Check if origin is in allowed list
-        if (allowedOrigins.some(allowed => {
-            if (typeof allowed === 'string') {
-                return allowed === origin;
-            }
-            if (allowed instanceof RegExp) {
-                return allowed.test(origin);
-            }
-            return false;
-        })) {
-            return callback(null, true);
-        }
-        
-        callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    origin: process.env.FRONTEND_URL || '*' || 'http://localhost:3000' || 'https://riffai-energy.vercel.app' || 'https://riffai-solar-platform.vercel.app',
+    credentials: true
 }));
 
+// app.use(cors({
+//     origin: function (origin, callback) {
+//         // Allow requests with no origin (like mobile apps or curl requests)
+//         if (!origin) return callback(null, true);
+        
+//         // Check if origin is in allowed list
+//         if (allowedOrigins.some(allowed => {
+//             if (typeof allowed === 'string') {
+//                 return allowed === origin;
+//             }
+//             if (allowed instanceof RegExp) {
+//                 return allowed.test(origin);
+//             }
+//             return false;
+//         })) {
+//             return callback(null, true);
+//         }
+        
+//         callback(new Error('Not allowed by CORS'));
+//     },
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+// }));
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Servir arquivos estáticos dos diretórios de imagens
 app.use('/annotated_images', express.static('annotated_images'));
