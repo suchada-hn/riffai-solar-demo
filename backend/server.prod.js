@@ -190,6 +190,230 @@ const createDetectionsTable = async () => {
     }
 };
 
+// Helper functions for detection processing
+const convertPixelsToCoords = (detection) => {
+    const IMAGE_WIDTH = 800;
+    const IMAGE_HEIGHT = 600;
+    const DEFAULT_ZOOM = 18.65;
+    const SCALE_ADJUSTMENT = 0.875;
+    const LONGITUDE_OFFSET = 0.00000042;
+    const LATITUDE_OFFSET = -0.00000072;
+
+    const classAdjustments = {
+        1: { // pool
+            scale: 0.93,
+            lonOffset: -0.0000002,
+            latOffset: -0.0000001
+        },
+        2: { // solar-panel
+            scale: 0.94,
+            lonOffset: 0.0000001,
+            latOffset: -0.0000004
+        }
+    };
+
+    const classAdjust = classAdjustments[detection.class] || { scale: 1, lonOffset: 0, latOffset: 0 };
+    const verticalScaleFactor = detection.class === 2 ? 0.92 : 1;
+
+    const metersPerPixelAtEquator = (156543.03392 * Math.cos(detection.latitude * Math.PI / 180) / Math.pow(2, DEFAULT_ZOOM))
+        * SCALE_ADJUSTMENT * classAdjust.scale;
+
+    const metersToDegreesAtEquator = 1 / 111319.9;
+    const latCorrectionFactor = Math.cos(detection.latitude * Math.PI / 180);
+    const degreesPerPixel = metersPerPixelAtEquator * metersToDegreesAtEquator;
+    const lngPerPixel = degreesPerPixel / latCorrectionFactor;
+    const latPerPixel = degreesPerPixel * verticalScaleFactor;
+
+    const offsetX = (IMAGE_WIDTH / 2) * 0.988;
+    const offsetY = (IMAGE_HEIGHT / 2) * 0.988;
+
+    // Extract bounding box coordinates
+    const bbox_xmin = detection.bbox[0];
+    const bbox_xmax = detection.bbox[2];
+    const bbox_ymin = detection.bbox[1];
+    const bbox_ymax = detection.bbox[3];
+
+    // Calculate center pixel coordinates
+    const centerPixelX = (bbox_xmin + bbox_xmax) / 2;
+    const centerPixelY = (bbox_ymin + bbox_ymax) / 2;
+
+    // Convert pixel coordinates to latitude and longitude
+    const centerLongitude = detection.longitude +
+        (centerPixelX - offsetX) * lngPerPixel +
+        LONGITUDE_OFFSET +
+        classAdjust.lonOffset;
+
+    const centerLatitude = detection.latitude -
+        (centerPixelY - offsetY) * latPerPixel +
+        LATITUDE_OFFSET +
+        classAdjust.latOffset;
+
+    return { centerLatitude, centerLongitude };
+};
+
+const detectionExists = async (centerLatitude, centerLongitude) => {
+    const MARGIN_OF_ERROR = 0.0001;
+    try {
+        if (db) {
+            // SQLite query
+            const query = `
+                SELECT 1 FROM detections
+                WHERE ABS(center_latitude - ?) < ?
+                AND ABS(center_longitude - ?) < ?
+                LIMIT 1;
+            `;
+            const values = [centerLatitude, MARGIN_OF_ERROR, centerLongitude, MARGIN_OF_ERROR];
+
+            return new Promise((resolve, reject) => {
+                db.get(query, values, (err, row) => {
+                    if (err) {
+                        console.error('SQLite error:', err.message);
+                        resolve(false);
+                    } else {
+                        resolve(row !== undefined);
+                    }
+                });
+            });
+        } else if (pool) {
+            // PostgreSQL query
+            const query = `
+                SELECT 1 FROM detections
+                WHERE ABS(center_latitude - $1) < $3
+                AND ABS(center_longitude - $2) < $3
+                LIMIT 1;
+            `;
+            const values = [centerLatitude, centerLongitude, MARGIN_OF_ERROR];
+
+            const result = await pool.query(query, values);
+            return result.rows.length > 0;
+        } else {
+            return false;
+        }
+    } catch (error) {
+        console.error('Error checking for existing detection:', error.message);
+        return false;
+    }
+};
+
+const insertDetection = async (detection, originalImagePath, annotatedImagePath) => {
+    if (detection.confidence <= 0.5) {
+        console.log('Skipping detection with confidence below threshold:', detection.confidence);
+        return { status: 'skipped', reason: 'low_confidence' };
+    }
+
+    // Calculate center coordinates using the conversion function
+    const { centerLatitude, centerLongitude } = convertPixelsToCoords(detection);
+
+    // Check if a similar detection already exists
+    const exists = await detectionExists(centerLatitude, centerLongitude);
+    if (exists) {
+        console.log('Skipping repeated detection at coordinates:', { centerLatitude, centerLongitude });
+        return { status: 'skipped', reason: 'duplicate' };
+    }
+
+    try {
+        console.log('Inserting detection with converted center coordinates:', {
+            centerLatitude,
+            centerLongitude
+        });
+
+        if (db) {
+            // SQLite insert
+            const query = `
+                INSERT INTO detections (
+                    class, 
+                    name, 
+                    bbox_xmin, 
+                    bbox_ymin, 
+                    bbox_xmax, 
+                    bbox_ymax, 
+                    latitude, 
+                    longitude, 
+                    confidence,
+                    original_image_path,
+                    annotated_image_path,
+                    center_latitude,
+                    center_longitude
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            const values = [
+                detection.class,
+                detection.name,
+                detection.bbox[0],
+                detection.bbox[1],
+                detection.bbox[2],
+                detection.bbox[3],
+                detection.latitude,
+                detection.longitude,
+                detection.confidence,
+                originalImagePath,
+                annotatedImagePath,
+                centerLatitude,
+                centerLongitude
+            ];
+
+            return new Promise((resolve, reject) => {
+                db.run(query, values, function(err) {
+                    if (err) {
+                        console.error('SQLite error:', err.message);
+                        resolve({ status: 'error', reason: err.message });
+                    } else {
+                        console.log('Detection inserted successfully.');
+                        resolve({ status: 'inserted' });
+                    }
+                });
+            });
+        } else if (pool) {
+            // PostgreSQL insert
+            const query = `
+                INSERT INTO detections (
+                    class, 
+                    name, 
+                    bbox_xmin, 
+                    bbox_ymin, 
+                    bbox_xmax, 
+                    bbox_ymax, 
+                    latitude, 
+                    longitude, 
+                    confidence,
+                    original_image_path,
+                    annotated_image_path,
+                    center_latitude,
+                    center_longitude
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            `;
+
+            const values = [
+                detection.class,
+                detection.name,
+                detection.bbox[0],
+                detection.bbox[1],
+                detection.bbox[2],
+                detection.bbox[3],
+                detection.latitude,
+                detection.longitude,
+                detection.confidence,
+                originalImagePath,
+                annotatedImagePath,
+                centerLatitude,
+                centerLongitude
+            ];
+
+            await pool.query(query, values);
+            console.log('Detection inserted successfully.');
+            return { status: 'inserted' };
+        } else {
+            return { status: 'error', reason: 'No database connection available' };
+        }
+    } catch (error) {
+        console.error('Error inserting detection:', error.message);
+        return { status: 'error', reason: error.message };
+    }
+};
+
 // Initialize database
 initializeDatabase();
 
@@ -317,6 +541,48 @@ app.post('/detect', upload.single('image'), async (req, res) => {
         // Try to run ML detection if available
         try {
             const result = await runMLDetection(req.file.path, latitude, longitude);
+            
+            // Process the result to match local server format
+            if (result && result.detections) {
+                // Add image URLs for frontend access
+                const path = require('path');
+                result.original_image_url = `/uploads/${path.basename(req.file.path)}`;
+                
+                // Check if detection_image exists in result
+                if (result.detection_image) {
+                    result.annotated_image_url = `/annotated_images/${path.basename(result.detection_image)}`;
+                } else {
+                    result.annotated_image_url = null;
+                }
+                
+                // Ensure location format matches local server
+                if (result.location) {
+                    result.location.latitude = parseFloat(result.location.latitude);
+                    result.location.longitude = parseFloat(result.location.longitude);
+                }
+                
+                // Save detections to the database with image paths
+                let skippedDetections = [];
+                if (result.detections && result.detections.length > 0) {
+                    console.log('Detections found, saving to database...');
+                    for (const detection of result.detections) {
+                        const dbResult = await insertDetection(
+                            detection,
+                            req.file.path.replace(/\\/g, '/'),  // Convert Windows path to Unix style
+                            result.detection_image ? result.detection_image.replace(/\\/g, '/') : null  // Convert Windows path to Unix style
+                        );
+                        if (dbResult.status === 'skipped') {
+                            skippedDetections.push(dbResult.reason);
+                        }
+                    }
+                }
+                
+                // Add skipped detections info to result
+                if (skippedDetections.length > 0) {
+                    result.skippedDetections = skippedDetections;
+                }
+            }
+            
             res.json(result);
         } catch (mlError) {
             console.error('ML detection failed, returning fallback:', mlError.message);
@@ -432,8 +698,8 @@ app.delete('/detections/:id', async (req, res) => {
 // ML Detection function
 const runMLDetection = (imagePath, latitude, longitude) => {
     return new Promise((resolve, reject) => {
-        // Prioritize ONNX-only script for reliability in production
-        let scriptPath = './run-solar-panel-and-pool-detection-onnx-only.py';
+        // Use the same script as local server for consistency
+        let scriptPath = './run-solar-panel-and-pool-detection.py';
         let scriptArgs = [scriptPath, imagePath, latitude, longitude];
         
         // Fallback to improved script if ONNX-only doesn't exist
