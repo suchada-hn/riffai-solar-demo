@@ -30,6 +30,9 @@ RUN pip3 install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY . .
 
+# Copy production environment file for server.js
+COPY .env.production .env.local
+
 # Create necessary directories
 RUN mkdir -p uploads annotated_images models
 
@@ -45,5 +48,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:$PORT/health || exit 1
 
-# Start the application
-CMD ["npm", "run", "start:prod"]
+# Start the application - now using server.js directly
+CMD ["node", "server.js"]
